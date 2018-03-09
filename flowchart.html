@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link rel="stylesheet" type="text/css" href="./flowchart/style.css" media="screen">
+  </head>
+  <body style="zoom: 1;">
+    <div id="main">
+      <section id="demo1">
+        <table align="center" class="inner">
+          <tbody>
+            <tr>
+              <td style="vertical-align: top;">
+                <h3 data-i18n="demo1" data-i18n-options="{&quot;defaultValue&quot;: &quot;Demo 1. Try editing me below&quot;}">Demo 1. Try editing me below</h3>
+                <div class="editor-wrapper">
+                  <div class="editor editor1 ace_editor ace-crimson-editor">
+                    <textarea class="ace_text-input" wrap="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="opacity: 0; height: 12.5px; width: 5.99609px; left: 204.898px; top: 125px;">st=>start: Start:>http://www.google.com[blank]
+e=>end:>http://www.google.com
+op1=>operation: My Operation
+sub1=>subroutine: My Subroutine
+cond=>condition: Yes
+or No?:>http://www.google.com
+io=>inputoutput: catch something...
+st->op1->cond
+cond(yes)->io->e
+cond(no)->sub1(right)->op1</textarea>
+                  </div>
+                  <button id="save" onclick="downloadSvg(document.getElementById('svg-container').firstChild, 'file.png')">Download</button>
+                </div>
+              </td>
+              <td class="diagram diagram1" id="svg-container">
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+      <script src="./flowchart/jquery.min.js"> </script>
+      <!-- Needed for the text editor -->
+      <script src="./flowchart/ace.js" type="text/javascript" charset="utf-8"> </script>
+      <script src="./flowchart/underscore-min.js"> </script>
+      <script src="./flowchart/raphael-min.js"> </script>
+      <script src="./flowchart/flowchart-latest.js"> </script>
+      <script src="./flowchart/svginnerhtml.min.js"> </script>
+      <script type="text/javascript">
+
+        function setup_editor(div, nr) {
+
+          var editor_div = div.find(".editor" + nr);
+          var diagram_div = div.find(".diagram" + nr);
+          var theme_div = div.find(".theme" + nr);
+
+          // Setup the editor diagram
+          var editor = ace.edit(editor_div.get(0));
+          editor.setTheme("ace/theme/crimson_editor");
+          editor.getSession().setMode("ace/mode/asciidoc");
+          editor.getSession().on('change', _.debounce(on_change, 100));
+
+          theme_div.change(on_change);
+          on_change();
+
+          function on_change() {
+            try {
+              var diagram = flowchart.parse(editor.getValue());
+
+              editor.getSession().setAnnotations([]);
+
+              // Clear out old diagram
+              diagram_div.html('');
+
+              // Draw
+              if (nr === 1 || nr === 3) {
+                diagram.drawSVG(diagram_div.get(0));
+              } else if (nr === 2) {
+                diagram.drawSVG(diagram_div.get(0), {
+                  'flowstate' : {
+                    'past' : { 'fill' : '#CCCCCC', 'font-size' : 12},
+                    'current' : {'fill' : 'yellow', 'font-color' : 'red', 'font-weight' : 'bold'},
+                    'future' : { 'fill' : '#FFFF99'},
+                    'invalid': {'fill' : '#444444'},
+                    'approved' : { 'fill' : '#58C4A3', 'font-size' : 12, 'yes-text' : 'APPROVED', 'no-text' : 'n/a' },
+                    'rejected' : { 'fill' : '#C45879', 'font-size' : 12, 'yes-text' : 'n/a', 'no-text' : 'REJECTED' }
+                  }
+                });
+              }
+
+            } catch(err) {
+              var annotation = {
+                type: "error", // also warning and information
+                column: 0,
+                row: 0,
+                text: err.message
+              };
+              if (err && err.loc) {
+                annotation.row    = err.loc.first_line - 1;
+                annotation.column = err.loc.first_column;
+              }
+              editor.getSession().setAnnotations([annotation]);
+              throw err;
+            }
+          }
+        }
+
+        $(document).ready(function() {
+          setup_editor($('#demo1'), 1);
+        });
+
+function copyStylesInline(destinationNode, sourceNode) {
+     var containerElements = ["svg","g"];
+        for (var cd = 0; cd < destinationNode.childNodes.length; cd++) {
+                 var child = destinationNode.childNodes[cd];
+                        if (containerElements.indexOf(child.tagName) != -1) {
+                                      copyStylesInline(child, sourceNode.childNodes[cd]);
+                                                  continue;
+                                                         }
+                               var style = sourceNode.childNodes[cd].currentStyle || window.getComputedStyle(sourceNode.childNodes[cd]);
+                                      if (style == "undefined" || style == null) continue;
+                                             for (var st = 0; st < style.length; st++){
+                          child.style.setProperty(style[st], style.getPropertyValue(style[st]));
+                     }
+                 }
+              }
+
+              function triggerDownload (imgURI, fileName) {
+                var evt = new MouseEvent("click", {
+                  view: window,
+                  bubbles: false,
+                  cancelable: true
+                });
+                var a = document.createElement("a");
+                a.setAttribute("download", fileName);
+                a.setAttribute("href", imgURI);
+                a.setAttribute("target", '_blank');
+                a.dispatchEvent(evt);
+              }
+
+              function downloadSvg(svg, fileName) {
+                var copy = svg.cloneNode(true);
+                copyStylesInline(copy, svg);
+                var canvas = document.createElement("canvas");
+                var bbox = svg.getBBox();
+                canvas.width = svg.getAttribute("width");
+                canvas.height = svg.getAttribute("height");
+                var ctx = canvas.getContext("2d");
+                ctx.clearRect(0, 0, bbox.width, bbox.height);
+                var data = (new XMLSerializer()).serializeToString(copy);
+                var DOMURL = window.URL || window.webkitURL || window;
+                var img = new Image();
+                var svgBlob = new Blob([data], {type: "image/svg+xml;charset=utf-8"});
+                var url = DOMURL.createObjectURL(svgBlob);
+                img.onload = function () {
+                  ctx.drawImage(img, 0, 0);
+                  DOMURL.revokeObjectURL(url);
+                  if (typeof navigator !== "undefined" && navigator.msSaveOrOpenBlob)
+                  {
+                      var blob = canvas.msToBlob();         
+                      navigator.msSaveOrOpenBlob(blob, fileName);
+                  } 
+                  else {
+                      var imgURI = canvas
+                          .toDataURL("image/png")
+                          .replace("image/png", "image/octet-stream");
+                      triggerDownload(imgURI, fileName);
+                  }
+                };
+                img.src = url;
+              }
+      </script>
+
+      </section>
+    </div>
+    </div>
+  </body>
+</html>
